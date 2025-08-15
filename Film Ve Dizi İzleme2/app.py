@@ -57,7 +57,7 @@ class Watchlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)  # Benzersiz izleme listesi öğe ID'si
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Kullanıcı ID'si (yabancı anahtar)
     content_id = db.Column(db.Integer, db.ForeignKey('contents.id'), nullable=False)  # İçerik ID'si (yabancı anahtar)
-    watched = db.Column(db.Boolean, default=False)  # İzlenme durumu (Varsayılan: False)
+    watched = db.Column(db.Boolean, default=False)  # Bu satır önemli!
     added_date = db.Column(db.DateTime, default=db.func.current_timestamp())  # Ekleme tarihi (otomatik)
 
 # Kullanıcı yükleyici - Flask-Login için gerekli
@@ -179,7 +179,22 @@ def add_to_watchlist(content_id):
     # Kullanıcıyı izleme listesi sayfasına yönlendir
     return redirect(url_for('watchlist'))
 
+# İçeriği izlendi olarak işaretlemek için route
+# Sadece giriş yapmış kullanıcılar erişebilir
+@app.route('/mark_watched/<int:watchlist_id>', methods=['POST', 'GET'])
+@login_required
+def mark_watched(watchlist_id):
+    item = Watchlist.query.get_or_404(watchlist_id)
+    if item.user_id != current_user.id:
+        abort(403)
+    item.watched = True
+    db.session.commit()
+    if request.method == 'POST':
+        return '', 204  # AJAX için boş cevap
+    flash('İçerik izlendi olarak işaretlendi.', 'success')
+    return redirect(url_for('watchlist'))
+
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        db.create_all()  # Veritabanı tablolarını oluşturur  # Veritabanı tablolarını oluşturur
     app.run(debug=True, port=8080)
